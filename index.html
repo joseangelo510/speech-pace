@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Speech Pace</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23256abf'/%3E%3Cpath d='M8 22a9 9 0 1 1 16 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M16 19l5-7' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    color-scheme: light;
+    --font: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --bg: #f2f4f7;
+    --surface: #fcfdfe;
+    --surface-2: #ebeef3;
+    --ink: #0d1117;
+    --ink-2: #4a5160;
+    --muted: #6b7383;
+    --hairline: #e2e6ec;
+    --axis: #c3c9d3;
+    --border: rgba(13, 17, 23, .10);
+    --accent: #2a78d6;   /* your pace / below target */
+    --good: #1baf7a;     /* inside the target zone */
+    --over: #eb6834;     /* above the target zone */
+    --btn: #256abf;
+    --sign-bg: #fbfbf7;
+    --sign-ink: #14171c;
+    --shadow: 0 1px 2px rgba(13, 17, 23, .04), 0 10px 30px rgba(13, 17, 23, .06);
+    --shadow-pop: 0 12px 40px rgba(13, 17, 23, .18);
+  }
+  /* Dark theme: follows the system unless the host page stamps data-theme, which then wins either way. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0a0c10;
+      --surface: #14171d;
+      --surface-2: #1f232b;
+      --ink: #f4f6f9;
+      --ink-2: #b9c0cc;
+      --muted: #8a92a1;
+      --hairline: #242a33;
+      --axis: #39404b;
+      --border: rgba(255, 255, 255, .10);
+      --accent: #3987e5;
+      --good: #199e70;
+      --over: #d95926;
+      --btn: #2a78d6;
+      --shadow: none;
+      --shadow-pop: 0 12px 40px rgba(0, 0, 0, .6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --surface: #14171d;
+    --surface-2: #1f232b;
+    --ink: #f4f6f9;
+    --ink-2: #b9c0cc;
+    --muted: #8a92a1;
+    --hairline: #242a33;
+    --axis: #39404b;
+    --border: rgba(255, 255, 255, .10);
+    --accent: #3987e5;
+    --good: #199e70;
+    --over: #d95926;
+    --btn: #2a78d6;
+    --shadow: none;
+    --shadow-pop: 0 12px 40px rgba(0, 0, 0, .6);
+  }
+
+  /* ---------- base ---------- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
+  [hidden] { display: none !important; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled, input:disabled { cursor: not-allowed; }
+  :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
+  h2 { font-size: 15px; font-weight: 700; margin: 0; letter-spacing: -.005em; }
+
+  .app { max-width: 1120px; margin: 0 auto; padding-block: 20px 40px; padding-inline: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ---------- header ---------- */
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; letter-spacing: -.01em; margin-right: auto; }
+  .brand svg { display: block; }
+  .seg { display: inline-flex; padding: 3px; background: var(--surface-2); border-radius: 999px; border: 1px solid var(--border); }
+  .seg button { border: 0; background: transparent; color: var(--ink-2); font-weight: 650; padding: 8px 18px; border-radius: 999px; }
+  .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .14); }
+  .seg button:disabled { opacity: .5; }
+
+  .prefs { position: relative; }
+  .prefs summary { list-style: none; cursor: pointer; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); font-weight: 650; color: var(--ink-2); background: var(--surface); user-select: none; }
+  .prefs summary::-webkit-details-marker { display: none; }
+  .prefs-body { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: min(280px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-pop); display: grid; gap: 14px; }
+  .pref { display: grid; gap: 6px; }
+  .pref-check { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .pref small { color: var(--muted); }
+  select, .text-input { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+
+  .banner { border: 1px solid color-mix(in srgb, var(--over) 45%, var(--surface)); background: color-mix(in srgb, var(--over) 10%, var(--surface)); border-radius: 14px; padding: 12px 16px; font-weight: 550; }
+
+  /* ---------- layout ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  @media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+
+  /* ---------- gauge panel ---------- */
+  .gauge-panel { display: flex; flex-direction: column; gap: 6px; }
+  .gauge-head { display: flex; gap: 16px; align-items: center; min-height: 88px; }
+  .sign { flex: none; width: 86px; padding: 7px 4px 8px; border: 3px solid var(--sign-ink); border-radius: 10px; background: var(--sign-bg); color: var(--sign-ink); text-align: center; display: grid; line-height: 1; box-shadow: 0 0 0 2px var(--sign-bg), 0 2px 8px rgba(0, 0, 0, .18); margin: 2px; }
+  .sign-top { font-size: 9.5px; font-weight: 800; letter-spacing: .09em; line-height: 1.15; }
+  .sign-num { font-size: 34px; font-weight: 800; letter-spacing: -.02em; margin: 3px 0 1px; font-variant-numeric: tabular-nums; }
+  .sign-unit { font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+  .sign.bump { animation: bump .6s ease-out; }
+  @keyframes bump { 0% { transform: scale(1); } 30% { transform: scale(1.14); } 100% { transform: scale(1); } }
+  .info { flex: 1; min-width: 0; }
+  .info-title { font-size: 21px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .info-sub { color: var(--ink-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 10px; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; }
+
+  .gauge-wrap { width: 100%; max-width: 470px; margin: 0 auto; }
+  .gauge { display: block; width: 100%; height: auto; --state: var(--accent); overflow: visible; }
+  .gauge[data-tone="good"] { --state: var(--good); }
+  .gauge[data-tone="over"] { --state: var(--over); }
+  .g-track { fill: none; stroke: var(--surface-2); stroke: color-mix(in srgb, var(--state) 15%, var(--surface)); stroke-width: 14; stroke-linecap: round; transition: stroke .3s; }
+  .g-fill { fill: none; stroke: var(--state); stroke-width: 14; stroke-linecap: round; transition: stroke .3s; }
+  .g-zone { fill: none; stroke: var(--good); stroke-width: 7; stroke-linecap: round; }
+  .g-target { stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
+  .g-tick { stroke: var(--axis); stroke-width: 1.5; stroke-linecap: round; }
+  .g-ticklabel { fill: var(--muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .g-dot { fill: var(--state); stroke: var(--surface); stroke-width: 3.5; transition: fill .3s; }
+  .g-hero { fill: var(--ink); font-size: 92px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .g-unit { fill: var(--muted); font-size: 13px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+
+  .status-row { display: flex; justify-content: center; margin-top: -6px; min-height: 40px; }
+  .status { --tone: var(--muted); display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px 7px 11px; border-radius: 999px; font-weight: 750; font-size: 18px; white-space: nowrap; background: color-mix(in srgb, var(--tone) 13%, var(--surface)); border: 1px solid color-mix(in srgb, var(--tone) 38%, var(--surface)); }
+  .status[data-tone="under"], .status[data-tone="listen"], .status[data-tone="pace"] { --tone: var(--accent); }
+  .status[data-tone="good"] { --tone: var(--good); }
+  .status[data-tone="over"] { --tone: var(--over); }
+  .status-icon { display: inline-flex; color: var(--tone); }
+  .status[data-tone="listen"] .status-icon { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  .btn { font-weight: 700; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); padding: 10px 18px; }
+  .btn:hover:not(:disabled) { background: var(--surface-2); }
+  .btn.primary { background: var(--btn); border-color: transparent; color: #fff; font-size: 18px; padding: 14px 40px; min-width: 210px; }
+  .btn.primary:hover:not(:disabled) { background: var(--btn); filter: brightness(1.08); }
+  .btn.primary[data-running="true"] { background: var(--ink); color: var(--surface); }
+  .btn.small { padding: 7px 14px; font-size: 14px; }
+  .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+  @media (hover: none) { .hint { display: none; } }
+  .heard { height: 2.9em; overflow: hidden; color: var(--muted); text-align: center; font-size: 14px; margin: 6px auto 0; max-width: 46ch; display: flex; flex-direction: column; justify-content: flex-end; }
+
+  /* ---------- ramp settings ---------- */
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .card-head small { color: var(--muted); }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  fieldset:disabled { opacity: .55; }
+  .field { display: grid; gap: 7px; }
+  .field + .field { margin-top: 16px; }
+  .label { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { font-weight: 650; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .chip:hover:not(:disabled) { background: var(--surface-2); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .chip-other { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; }
+  .chip-other input { width: 68px; padding: 7px 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); text-align: center; font-weight: 650; -moz-appearance: textfield; appearance: textfield; }
+  .chip-other input::-webkit-outer-spin-button, .chip-other input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .chip-other input::placeholder { font-weight: 550; font-size: 13px; }
+  .chip-other input.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .stepper button { width: 38px; height: 38px; border: 0; background: var(--surface-2); font-size: 19px; font-weight: 600; line-height: 1; }
+  .stepper input { width: 62px; height: 38px; text-align: center; border: 0; background: transparent; font-weight: 750; font-size: 17px; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .unit { color: var(--muted); font-weight: 600; }
+  .summary { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--hairline); color: var(--ink-2); }
+  .summary strong { color: var(--ink); }
+  details.adv { margin-top: 14px; }
+  details.adv summary { cursor: pointer; color: var(--ink-2); font-weight: 650; }
+  details.adv .adv-body { display: grid; gap: 8px; margin-top: 10px; }
+  details.adv small { color: var(--muted); }
+
+  /* ---------- breakdown ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .kpi .v { font-size: 22px; font-weight: 750; letter-spacing: -.01em; line-height: 1.15; }
+  .kpi .k { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .table-wrap { max-height: 420px; overflow: auto; }
+  table.ladder { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .ladder th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: 12px; color: var(--muted); font-weight: 650; padding: 6px 8px; border-bottom: 1px solid var(--hairline); }
+  .ladder td { padding: 8px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  .ladder tr:last-child td { border-bottom: 0; }
+  .ladder .num { text-align: right; }
+  .ladder .main { font-weight: 700; }
+  .ladder .sub { display: block; font-size: 12.5px; color: var(--muted); font-weight: 550; }
+  .ladder tr[aria-current="true"] td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .ladder tr.todo .main { color: var(--ink-2); }
+  .verdict { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  .verdict svg { flex: none; }
+  .v-good svg { color: var(--good); } .v-under svg { color: var(--accent); } .v-over svg { color: var(--over); }
+  .guide { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; }
+  .guide li { display: flex; justify-content: space-between; gap: 12px; padding: 8px; border-bottom: 1px solid var(--hairline); }
+  .guide li:last-child { border-bottom: 0; }
+  .guide span:first-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .guide span:last-child { color: var(--ink-2); text-align: right; }
+  .guide-note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+
+  /* ---------- chart ---------- */
+  .chart-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .legend { display: flex; gap: 16px; color: var(--ink-2); font-size: 13px; margin-left: auto; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .key-line { width: 16px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .key-band { width: 14px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--good) 26%, transparent); border-top: 1.5px solid var(--good); }
+  #chart { position: relative; height: 230px; border-radius: 8px; }
+  #chart svg { display: block; width: 100%; height: 100%; }
+  .c-grid { stroke: var(--hairline); stroke-width: 1; }
+  .c-axis { stroke: var(--axis); stroke-width: 1; }
+  .c-label { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .c-zone { fill: var(--good); opacity: .17; }
+  .c-zone-line { stroke: var(--good); stroke-width: 1.5; }
+  .c-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .c-area { fill: var(--accent); opacity: .10; }
+  .c-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+  .c-cross { stroke: var(--muted); stroke-width: 1; }
+  .chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; text-align: center; padding: 0 40px; }
+  .tip { position: absolute; top: 6px; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; line-height: 1.35; white-space: nowrap; box-shadow: var(--shadow-pop); font-variant-numeric: tabular-nums; }
+  .tip b { display: block; font-size: 15px; }
+  .tip span { display: block; opacity: .78; }
+
+  /* ---------- history + footer ---------- */
+  .history { padding-inline: 4px; }
+  .history-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .history-head h2 { margin-right: auto; }
+  .hist { list-style: none; margin: 0; padding: 0; }
+  .hist li { display: flex; align-items: center; gap: 14px; padding: 11px 4px; border-bottom: 1px solid var(--hairline); }
+  .hist .h-main { flex: 1; min-width: 0; }
+  .hist .h-title { font-weight: 700; }
+  .hist .h-sub { color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .hist .h-avg { text-align: right; font-weight: 750; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .hist .h-avg small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .hist-empty { color: var(--muted); padding: 8px 4px; }
+  footer { color: var(--muted); font-size: 12.5px; padding-inline: 4px; max-width: 80ch; }
+
+  @media (max-width: 520px) {
+    .panel { padding: 14px; border-radius: 16px; }
+    .info-title { font-size: 18px; }
+    .status { font-size: 16px; }
+    .btn.primary { width: 100%; }
+    .kpi .v { font-size: 19px; }
+    #chart { height: 200px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sign.bump, .status[data-tone="listen"] .status-icon { animation: none; }
+    .g-track, .g-fill, .g-dot { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--btn)"/><path d="M8 22a9 9 0 1 1 16 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M16 19l5-7" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+      Speech Pace
+    </div>
+    <div class="seg" role="tablist" aria-label="Practice mode">
+      <button role="tab" id="tabFree" data-mode="free" aria-selected="true">Free talk</button>
+      <button role="tab" id="tabRamp" data-mode="ramp" aria-selected="false">Ramp up</button>
+    </div>
+    <details class="prefs" id="prefs">
+      <summary>Settings</summary>
+      <div class="prefs-body">
+        <div class="pref">
+          <label class="label" for="lang">Language you'll speak</label>
+          <select id="lang"></select>
+        </div>
+        <div class="pref">
+          <label class="label" for="tol">On-pace zone</label>
+          <select id="tol">
+            <option value="5">Within 5% of the target</option>
+            <option value="10">Within 10% of the target</option>
+            <option value="15">Within 15% of the target</option>
+          </select>
+        </div>
+        <label class="pref-check"><input type="checkbox" id="sound"> Sound cues when the level changes</label>
+      </div>
+    </details>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <main class="grid">
+    <section class="panel gauge-panel" aria-label="Live pace">
+      <div class="gauge-head">
+        <div class="sign" id="sign" hidden>
+          <span class="sign-top">TARGET<br>PACE</span>
+          <span class="sign-num" id="signNum">140</span>
+          <span class="sign-unit">WPM</span>
+        </div>
+        <div class="info">
+          <div class="info-title" id="infoTitle" aria-live="polite">Free talk</div>
+          <div class="info-sub" id="infoSub"></div>
+          <div class="bar" id="bar" hidden><i id="barFill"></i></div>
+        </div>
+      </div>
+
+      <div class="gauge-wrap">
+        <svg id="gauge" class="gauge" viewBox="0 0 400 284" role="img" aria-label="Live speaking pace gauge">
+          <path id="gTrack" class="g-track" d=""/>
+          <path id="gFill" class="g-fill" d="" pathLength="100" stroke-dasharray="0 200"/>
+          <path id="gZone" class="g-zone" d="" hidden/>
+          <g id="gTicks"></g>
+          <line id="gTarget" class="g-target" hidden/>
+          <circle id="gDot" class="g-dot" r="9"/>
+          <text id="hero" class="g-hero" x="200" y="213" text-anchor="middle">0</text>
+          <text id="heroUnit" class="g-unit" x="200" y="241" text-anchor="middle">words per minute</text>
+        </svg>
+      </div>
+      <div class="status-row">
+        <div class="status" id="status" data-tone="idle"><span class="status-icon" id="statusIcon"></span><span id="statusText">Ready</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="startBtn">Start</button>
+      </div>
+      <div class="actions" id="doneActions" hidden>
+        <button class="btn small" id="copyBtn">Copy results</button>
+        <button class="btn small" id="useBaseBtn" hidden>Use as ramp baseline</button>
+      </div>
+      <p class="hint" id="hint">Space bar starts and stops</p>
+      <p class="heard" id="heard" aria-hidden="true"></p>
+    </section>
+
+    <aside class="side">
+      <section class="panel" id="rampCard" hidden>
+        <div class="card-head"><h2>Your ramp</h2><small id="rampTotal"></small></div>
+        <fieldset id="rampFields">
+          <div class="field">
+            <span class="label" id="lblBase">Starting pace</span>
+            <div class="row">
+              <div class="stepper" role="group" aria-labelledby="lblBase">
+                <button type="button" id="baseDown" aria-label="Lower starting pace">&minus;</button>
+                <input type="number" id="baseline" inputmode="numeric" min="60" max="300" aria-labelledby="lblBase">
+                <button type="button" id="baseUp" aria-label="Raise starting pace">+</button>
+              </div>
+              <span class="unit">wpm</span>
+              <button type="button" class="btn small" id="measureBtn">Measure my pace (20 s)</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblStep">Get faster by</span>
+            <div class="chips" id="stepChips" role="group" aria-labelledby="lblStep"></div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblInt">Every</span>
+            <div class="chips" id="intChips" role="group" aria-labelledby="lblInt"></div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblLevels">Number of levels</span>
+            <div class="row">
+              <div class="stepper" role="group" aria-labelledby="lblLevels">
+                <button type="button" id="levelsDown" aria-label="Fewer levels">&minus;</button>
+                <input type="number" id="levels" inputmode="numeric" min="2" max="15" aria-labelledby="lblLevels">
+                <button type="button" id="levelsUp" aria-label="More levels">+</button>
+              </div>
+            </div>
+          </div>
+          <details class="adv" id="adv">
+            <summary>Use my own list of levels</summary>
+            <div class="adv-body">
+              <label class="pref-check"><input type="checkbox" id="customOn"> Use this list instead of even steps</label>
+              <input class="text-input" type="text" id="custom" aria-label="Custom levels, percent faster than starting pace" placeholder="0, 5, 10, 15, 20, 50">
+              <small>Percent faster than your starting pace, separated by commas.</small>
+            </div>
+          </details>
+        </fieldset>
+        <p class="summary" id="rampSummary"></p>
+      </section>
+
+      <section class="panel" id="breakCard">
+        <div class="card-head"><h2 id="breakTitle">This session</h2><small id="breakNote"></small></div>
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="kAvg">–</div><div class="k">Average wpm</div></div>
+          <div class="kpi"><div class="v" id="kPeak">–</div><div class="k">Peak wpm</div></div>
+          <div class="kpi"><div class="v" id="kWords">0</div><div class="k">Words</div></div>
+          <div class="kpi"><div class="v" id="kTime">0:00</div><div class="k">Time</div></div>
+        </div>
+        <div class="table-wrap" id="tableWrap"></div>
+      </section>
+    </aside>
+  </main>
+
+  <section class="panel" aria-label="Pace over time">
+    <div class="chart-head">
+      <h2>Pace over time</h2>
+      <div class="legend" id="legend" hidden>
+        <span><i class="key-line"></i>Your pace</span>
+        <span><i class="key-band"></i>Target zone</span>
+      </div>
+    </div>
+    <div id="chart" tabindex="0" aria-label="Chart of your pace over time. Use the left and right arrow keys to read values.">
+      <svg aria-hidden="true"></svg>
+      <div class="chart-empty" id="chartEmpty">Your pace draws here as you talk.</div>
+      <div class="tip" id="tip" hidden><b id="tipV"></b><span id="tipT"></span><span id="tipG"></span></div>
+    </div>
+  </section>
+
+  <section class="history" aria-label="Past sessions">
+    <div class="history-head">
+      <h2>Past sessions</h2>
+      <button class="btn small" id="histMore" hidden>Show all</button>
+      <button class="btn small" id="histClear" hidden>Clear</button>
+    </div>
+    <ul class="hist" id="hist"></ul>
+  </section>
+
+  <footer>
+    Words are counted by your browser's built-in speech recognition. In Chrome, that means your audio is sent to Google to be transcribed while a session is running. Speech Pace doesn't record or upload anything itself, and your session numbers are saved only in this browser.
+  </footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- tuning ---------- */
+const WINDOW_S = 6;        // the live reading looks at the last 6 seconds of speech
+const GRACE_S = 1.2;       // a silence this short doesn't pull the reading down
+const LATENCY_S = 0.5;     // typical delay between saying a word and the recognizer reporting it
+const WORD_S = 0.4;        // assumed length of a word, used to back-date the very first result
+const SPREAD_CAP_S = 2;    // words that arrive in one burst are spread back over at most this long
+const SMOOTH_S = 0.6;      // easing of the needle
+const FREE_BLOCK_S = 20;   // free talk is broken down in 20-second blocks
+const MEASURE_S = 20;
+const MIN_PARTIAL_S = 5;   // a block cut short by Stop still counts if it lasted this long
+const IDLE_STOP_S = 120;   // stop by itself after two minutes of silence
+
+const STEP_PRESETS = [5, 10, 15, 20, 25, 50];
+const INTERVAL_PRESETS = [20, 30, 45, 60];
+const BANDS = [[110, 'Slow'], [140, 'Measured'], [170, 'Conversational'], [200, 'Brisk'], [Infinity, 'Fast']];
+const LANGS = [
+  ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['en-AU', 'English (Australia)'], ['en-CA', 'English (Canada)'],
+  ['en-IN', 'English (India)'], ['en-PH', 'English (Philippines)'], ['es-US', 'Español (Estados Unidos)'],
+  ['es-MX', 'Español (México)'], ['es-ES', 'Español (España)'], ['fil-PH', 'Filipino'], ['fr-FR', 'Français'],
+  ['de-DE', 'Deutsch'], ['it-IT', 'Italiano'], ['pt-BR', 'Português (Brasil)'], ['nl-NL', 'Nederlands'],
+];
+const LS_SETTINGS = 'speechpace.settings.v1', LS_HISTORY = 'speechpace.history.v1';
+
+const ICONS = {
+  up: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 16V5M5 9.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  down: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 4v11M5 10.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.5 10.5l3.8 3.8 7.2-7.8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  mic: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="7.5" y="2.5" width="5" height="9.5" rx="2.5" fill="currentColor"/><path d="M5 9.5a5 5 0 0 0 10 0M10 14.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  dot: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="4.5" fill="currentColor"/></svg>',
+  flag: '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M5 17.5V3.5M5 4.5h10l-2.5 3.2L15 11H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const show = (el, on) => { if (on) el.removeAttribute('hidden'); else el.setAttribute('hidden', ''); };
+const fmtTime = sec => { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+const fmtDur = sec => sec % 60 === 0 ? (sec / 60) + ' min' : sec < 60 ? sec + ' s' : fmtTime(sec);
+const fmtPct = p => p === 0 ? 'starting pace' : (p > 0 ? '+' : '−') + Math.abs(+p.toFixed(1)) + '%';
+const bandLabel = w => BANDS.find(b => w < b[0])[1];
+const countWords = t => { t = t.trim(); return t ? t.split(/\s+/).length : 0; };
+const upperBound = (arr, x) => { let lo = 0, hi = arr.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] <= x) lo = mid + 1; else hi = mid; } return lo; };
+const countIn = (arr, a, b) => upperBound(arr, b) - upperBound(arr, a);   // words in (a, b]
+function load(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* storage is optional */ } }
+function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
+
+/* ---------- settings ---------- */
+const DEFAULTS = { mode: 'free', baseline: 140, stepPct: 10, intervalSec: 20, levels: 6, customOn: false, custom: '0, 5, 10, 15, 20, 50', tolPct: 10, lang: '', sound: true };
+function guessLang() {
+  const nav = navigator.language || 'en-US';
+  const exact = LANGS.find(l => l[0].toLowerCase() === nav.toLowerCase());
+  if (exact) return exact[0];
+  const near = LANGS.find(l => l[0].slice(0, 2) === nav.slice(0, 2).toLowerCase());
+  return near ? near[0] : 'en-US';
+}
+function sanitize(s) {
+  s.mode = s.mode === 'ramp' ? 'ramp' : 'free';
+  s.baseline = clamp(Math.round(+s.baseline) || 140, 60, 300);
+  s.stepPct = clamp(+(+s.stepPct).toFixed(1) || 10, 1, 100);
+  s.intervalSec = clamp(Math.round(+s.intervalSec) || 20, 5, 600);
+  s.levels = clamp(Math.round(+s.levels) || 6, 2, 15);
+  s.tolPct = [5, 10, 15].includes(+s.tolPct) ? +s.tolPct : 10;
+  s.customOn = !!s.customOn;
+  s.custom = String(s.custom ?? DEFAULTS.custom).slice(0, 120);
+  s.sound = s.sound !== false;
+  if (!LANGS.some(l => l[0] === s.lang)) s.lang = guessLang();
+  return s;
+}
+const S = sanitize(Object.assign({}, DEFAULTS, load(LS_SETTINGS, {})));
+const saveSettings = () => save(LS_SETTINGS, S);
+
+function parseCustom(str) {
+  return String(str).split(/[\s,;]+/).map(x => parseFloat(x.replace('%', '')))
+    .filter(x => Number.isFinite(x) && x >= -50 && x <= 300).slice(0, 15);
+}
+function ladder() {
+  let pcts = S.customOn ? parseCustom(S.custom) : [];
+  if (!pcts.length) pcts = Array.from({ length: S.levels }, (_, i) => +(i * S.stepPct).toFixed(1));
+  return pcts.map((pct, i) => ({ i, pct, target: Math.round(S.baseline * (1 + pct / 100)) }));
+}
+
+/* ---------- session state ---------- */
+let ses = null;     // the current (or just finished) session
+let note = null;    // a one-off message shown in place of the idle text
+
+function newSession(kind) {
+  const now = performance.now() / 1000;
+  return {
+    kind, state: 'waiting', micLive: false, startedAt: Date.now(),
+    interval: kind === 'ramp' ? S.intervalSec : kind === 'measure' ? MEASURE_S : FREE_BLOCK_S,
+    ladder: kind === 'ramp' ? ladder() : null, tol: S.tolPct / 100, baseline: S.baseline,
+    t0: null, words: [], lastTotal: 0, lastActivity: now,
+    raw: 0, smooth: 0, peak: 0, peakAll: 0, level: 0, tone: 'under', tickMark: 0,
+    samples: [], lastSampleT: -1, lastUpdate: 0, lastUi: 0,
+    endS: 0, dur: 0, avg: 0, finalSegs: [], reason: '',
+  };
+}
+const isActive = () => !!ses && ses.state !== 'done';
+
+/* Words come in as a running total. New words are time-stamped by spreading them back over the gap
+   since the previous result, so a burst of four words doesn't read as a spike. */
+function onWordTotal(total, arrival) {
+  const s = ses;
+  if (!s || s.state === 'done') return;
+  s.lastActivity = arrival;
+  const delta = total - s.lastTotal;
+  s.lastTotal = total;
+  if (delta === 0) return;
+  if (delta < 0) { s.words.length = Math.max(0, s.words.length + delta); return; }   // the recognizer revised itself
+  let tEnd = arrival - LATENCY_S, tStart;
+  if (s.t0 === null) {
+    tStart = tEnd - WORD_S * Math.min(delta, 5);
+    s.t0 = tStart; s.state = 'running';
+    onClockStart(s);
+  } else {
+    const prev = s.words.length ? s.words[s.words.length - 1] : s.t0;
+    tStart = Math.max(prev, tEnd - SPREAD_CAP_S);
+    tEnd = Math.max(tEnd, tStart);
+  }
+  for (let k = 1; k <= delta; k++) s.words.push(tStart + (tEnd - tStart) * k / delta);
+}
+
+function lastWordTime(s) { return s.words.length ? s.words[s.words.length - 1] : s.t0; }
+
+function rollingRate(s, nowS) {
+  const n = s.words.length;
+  if (s.t0 === null || !n) return 0;
+  const end = Math.max(s.words[n - 1], nowS - GRACE_S);
+  const span = Math.min(WINDOW_S, Math.max(end - s.t0, 1.5));
+  const start = end - span;
+  const i0 = upperBound(s.words, start);   // first word that ends inside the window
+  if (i0 >= n) return 0;
+  // The word straddling the window's start only counts for the part of it that's inside.
+  // Without this the reading runs about half a word (≈5 wpm) high.
+  const wEnd = s.words[i0], wStart = Math.max(i0 ? s.words[i0 - 1] : s.t0, wEnd - 0.6);
+  const frac = wEnd > wStart ? clamp((wEnd - start) / (wEnd - wStart), 0, 1) : 1;
+  return (n - i0 - 1 + frac) / span * 60;
+}
+
+function verdict(g, tol) {
+  if (g.wpm === null || !g.target) return null;
+  const diff = g.wpm / g.target - 1;
+  return { diff, kind: Math.abs(diff) <= tol ? 'good' : diff < 0 ? 'under' : 'over' };
+}
+
+function buildSegs(s, nowS, final) {
+  const end = final ? s.endS : Math.max(lastWordTime(s), nowS - GRACE_S);
+  const clock = final ? s.endS : nowS;
+  const n = s.kind === 'ramp' ? s.ladder.length : Math.floor(Math.max(0, clock - s.t0) / s.interval) + 1;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = s.t0 + i * s.interval, b = a + s.interval;
+    const g = s.kind === 'ramp' ? { ...s.ladder[i] } : { i, pct: null, target: null };
+    g.start = i * s.interval; g.len = s.interval; g.wpm = null;
+    if (clock >= b - 1e-6) { g.state = 'done'; g.wpm = countIn(s.words, a, b) / s.interval * 60; }
+    else if (clock > a) {
+      const el = Math.min(end, b) - a;
+      g.state = final ? 'partial' : 'live';
+      if (final) g.len = el;
+      if (el >= (final ? MIN_PARTIAL_S : 3)) g.wpm = countIn(s.words, a, b) / el * 60;
+      else if (final) g.state = 'skipped';
+    } else g.state = final ? 'skipped' : 'todo';
+    if (g.wpm !== null) g.wpm = Math.round(g.wpm);
+    out.push(g);
+  }
+  return final && s.kind !== 'ramp' ? out.filter(g => g.wpm !== null) : out;
+}
+
+function currentSegs(nowS) {
+  const s = ses;
+  if (s && s.state === 'done') return s.finalSegs;
+  if (s && s.t0 !== null) return buildSegs(s, nowS, false);
+  const kind = s ? s.kind : S.mode;
+  if (kind !== 'ramp') return [];
+  return (s ? s.ladder : ladder()).map(l => ({ ...l, start: l.i * (s ? s.interval : S.intervalSec), state: 'todo', wpm: null }));
+}
+
+/* ---------- speech recognition ---------- */
+const ERRORS = {
+  unsupported: "This browser can't do live speech recognition. Open this page in Google Chrome (Edge and Safari work too).",
+  'not-allowed': 'The microphone is blocked for this page. Click the icon at the left of the address bar, allow the microphone, then press Start again.',
+  'service-not-allowed': "Speech recognition is switched off in this browser. In Safari, turn on Dictation in System Settings → Keyboard. Or open this page in Google Chrome.",
+  'audio-capture': "No microphone was found. Check your input device in System Settings → Sound, then press Start again.",
+  network: "Couldn't reach the speech recognition service. Check your internet connection. If you're online, open this page in Google Chrome — some browsers don't include speech recognition.",
+  'language-not-supported': "This browser can't recognize that language. Pick another one in Settings.",
+  stalled: 'Speech recognition keeps stopping right after it starts. Reload the page, or open it in Google Chrome.',
+};
+
+const recognizer = (() => {
+  let rec = null, active = false, committed = 0, counts = [], texts = [], tail = '';
+  let startedAt = 0, gotResult = false, quickFails = 0, timer = 0;
+  const android = /Android/i.test(navigator.userAgent);   // Android repeats itself in continuous mode
+  const sum = () => counts.reduce((a, b) => a + (b || 0), 0);
+
+  function detach() {
+    clearTimeout(timer);
+    if (!rec) return;
+    rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+    try { rec.abort(); } catch { /* already stopped */ }
+    rec = null;
+  }
+
+  function begin() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { active = false; onRecognizerError('unsupported'); return; }
+    const mine = rec = new SR();
+    mine.lang = S.lang; mine.continuous = !android; mine.interimResults = true; mine.maxAlternatives = 1;
+    mine.onstart = () => { if (mine !== rec) return; startedAt = performance.now(); gotResult = false; onMicLive(); };
+    mine.onresult = (e) => {
+      if (mine !== rec || !active) return;
+      gotResult = true; quickFails = 0;
+      const n = e.results.length;
+      for (let i = e.resultIndex; i < n; i++) {
+        const t = e.results[i][0] ? e.results[i][0].transcript : '';
+        texts[i] = t; counts[i] = countWords(t);
+      }
+      counts.length = texts.length = n;
+      onWordTotal(committed + sum(), performance.now() / 1000);
+      onHeard((tail + ' ' + texts.join(' ')).trim());
+    };
+    mine.onerror = (e) => {
+      if (mine !== rec || !active) return;
+      if (e.error === 'no-speech' || e.error === 'aborted') return;   // harmless; onend restarts
+      active = false;
+      onRecognizerError(e.error);
+    };
+    mine.onend = () => {
+      if (mine !== rec) return;
+      committed += sum();
+      tail = (tail + ' ' + texts.join(' ')).trim().slice(-400);
+      counts = []; texts = [];
+      if (!active) return;
+      if (!gotResult && startedAt && performance.now() - startedAt < 1200) {
+        if (++quickFails >= 4) { active = false; onRecognizerError('stalled'); return; }
+      }
+      begin();   // Chrome ends a session after a pause; pick straight back up so no words are missed
+    };
+    try { mine.start(); } catch { timer = setTimeout(begin, 400); }
+  }
+
+  return {
+    start() { detach(); committed = 0; counts = []; texts = []; tail = ''; quickFails = 0; startedAt = 0; active = true; begin(); },
+    stop() { active = false; detach(); },
+  };
+})();
+
+function onMicLive() { if (ses && !ses.micLive) { ses.micLive = true; renderInfo(); renderStatus(); } }
+function onHeard(text) { setText($('heard'), text.length > 170 ? '…' + text.slice(-170) : text); }
+function onRecognizerError(code) {
+  showBanner(ERRORS[code] || ('Speech recognition stopped unexpectedly (' + code + '). Press Start to try again.'));
+  if (ses && ses.state === 'running' && ses.words.length >= 5) finish('error'); else cancel();
+}
+
+/* ---------- sound + wake lock ---------- */
+let actx = null;
+function primeAudio() {
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { actx = null; }
+}
+function beep(freq, dur, when, gain) {
+  if (!S.sound || !actx) return;
+  try {
+    const t = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + 0.03);
+  } catch { /* sound is optional */ }
+}
+const cue = {
+  tick: () => beep(520, 0.06, 0, 0.035),
+  level: () => { beep(660, 0.11, 0, 0.07); beep(880, 0.16, 0.12, 0.07); },
+  done: () => { beep(660, 0.11, 0, 0.07); beep(880, 0.11, 0.12, 0.07); beep(1100, 0.24, 0.24, 0.07); },
+};
+let wake = null;
+async function holdWake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
+    else if (!on && wake) { await wake.release(); wake = null; }
+  } catch { wake = null; }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && isActive()) holdWake(true); });
+
+/* ---------- session control ---------- */
+function start(kind) {
+  if (isActive()) return;
+  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) { showBanner(ERRORS.unsupported); return; }
+  hideBanner(); primeAudio();
+  note = null; hoverT = null;
+  ses = newSession(kind);
+  setText($('heard'), '');
+  $('prefs').open = false;
+  recognizer.start();
+  holdWake(true);
+  renderAll();
+  kick();
+}
+
+function cancel(message) {
+  recognizer.stop(); holdWake(false);
+  ses = null;
+  if (message) note = message;
+  renderAll();
+}
+
+function onClockStart(s) {
+  if (s.kind === 'ramp') cue.level();
+  renderAll();
+}
+
+function onLevelChange(s) {
+  s.tickMark = 0;
+  cue.level();
+  renderSign(true);
+  renderZone();
+}
+
+function finish(reason) {
+  const s = ses;
+  if (!s || s.state === 'done') return;
+  recognizer.stop(); holdWake(false);
+  if (s.t0 === null || s.words.length < 3) {
+    cancel(reason === 'error' ? null : { title: "Didn't catch any speech", sub: 'Check that the right microphone is selected, then try again.' });
+    return;
+  }
+  const n = s.kind === 'ramp' ? s.ladder.length : 1;
+  s.endS = reason === 'complete' ? s.t0 + n * s.interval : lastWordTime(s);
+  s.dur = Math.max(1, s.endS - s.t0);
+  s.avg = Math.round(s.words.length / s.dur * 60);
+  s.peak = Math.round(Math.max(s.peak, 0)) || s.avg;
+  s.state = 'done'; s.reason = reason;
+  s.finalSegs = buildSegs(s, s.endS, true);
+
+  if (s.kind === 'measure') {
+    if (reason === 'complete' && s.words.length >= 10) {
+      S.baseline = clamp(s.avg, 60, 300); saveSettings();
+      cancel({ title: 'Starting pace set to ' + S.baseline + ' wpm', sub: "Your ramp is updated. Press Start when you're ready." });
+      cue.done();
+    } else cancel({ title: 'Not enough speech to measure', sub: 'Talk for the full 20 seconds, a little closer to the mic.' });
+    return;
+  }
+
+  if (s.kind === 'ramp') {
+    const judged = s.finalSegs.map(g => ({ g, v: verdict(g, s.tol) })).filter(x => x.v);
+    s.hits = judged.filter(x => x.v.kind === 'good').length;
+    s.judged = judged.length;
+    const kept = judged.filter(x => x.v.kind !== 'under');
+    s.topHeld = kept.length ? kept[kept.length - 1].g : null;
+  }
+  pushHistory(s);
+  cue.done();
+  renderAll();
+  paintGauge(s.avg);
+  setText($('hero'), String(s.avg));
+}
+
+/* ---------- main loop ---------- */
+function update(nowMs) {
+  const s = ses;
+  if (!s || s.state === 'done') return;
+  const now = nowMs / 1000, nowS = now - LATENCY_S;
+  const dt = clamp(now - (s.lastUpdate || now), 0, 1);
+  s.lastUpdate = now;
+
+  if (s.state === 'waiting') {
+    if (now - s.lastActivity > IDLE_STOP_S) cancel({ title: "Didn't hear anything", sub: 'Stopped listening after two minutes of silence.' });
+    return;
+  }
+
+  s.raw = rollingRate(s, nowS);
+  s.smooth += (s.raw - s.smooth) * (1 - Math.exp(-dt / SMOOTH_S));
+  if (s.raw === 0 && s.smooth < 1) s.smooth = 0;
+  const tRel = nowS - s.t0;
+  if (tRel > 5) s.peak = Math.max(s.peak, s.smooth);
+  s.peakAll = Math.max(s.peakAll, s.smooth);
+
+  if (s.kind === 'ramp') {
+    const idx = Math.floor(tRel / s.interval);
+    if (idx >= s.ladder.length) { finish('complete'); return; }
+    if (idx !== s.level) { s.level = idx; onLevelChange(s); }
+    const left = Math.ceil(s.interval - (tRel - idx * s.interval));
+    if (left <= 3 && left >= 1 && left !== s.tickMark && s.interval >= 8) { s.tickMark = left; cue.tick(); }
+  } else if (s.kind === 'measure' && tRel >= MEASURE_S) { finish('complete'); return; }
+  if (now - s.lastActivity > IDLE_STOP_S) { finish('idle'); return; }
+
+  if (tRel >= 2 && tRel - s.lastSampleT >= 0.5) {   // the first two seconds are just the needle sweeping up from zero
+    s.lastSampleT = tRel;
+    s.samples.push({ t: +tRel.toFixed(2), v: Math.round(s.smooth) });
+    drawChart();
+  }
+  paintGauge(s.smooth);
+  if (now - s.lastUi >= 0.2) { s.lastUi = now; renderLive(nowS); }
+}
+
+let rafId = 0;
+function loop(ts) { rafId = 0; update(ts); if (isActive()) rafId = requestAnimationFrame(loop); }
+function kick() { if (!rafId) rafId = requestAnimationFrame(loop); }
+setInterval(() => { if (isActive()) update(performance.now()); }, 500);   // keeps going when the tab is in the background
+
+/* ---------- gauge ---------- */
+const G = { cx: 200, cy: 190, r: 150, a0: -120, a1: 120 };
+let gaugeMax = 300;
+const polar = (r, deg) => { const a = deg * Math.PI / 180; return [G.cx + r * Math.sin(a), G.cy - r * Math.cos(a)]; };
+const valToDeg = v => G.a0 + (G.a1 - G.a0) * clamp(v / gaugeMax, 0, 1);
+function arcPath(r, d0, d1) {
+  const [x0, y0] = polar(r, d0), [x1, y1] = polar(r, d1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${d1 - d0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+function drawGaugeStatic() {
+  const lad = ses ? ses.ladder : (S.mode === 'ramp' ? ladder() : null);
+  const tol = ses ? ses.tol : S.tolPct / 100;
+  const top = lad ? Math.max(...lad.map(l => l.target)) * (1 + tol) * 1.06 : 0;
+  gaugeMax = Math.max(300, Math.ceil(top / 50) * 50);
+  $('gTrack').setAttribute('d', arcPath(G.r, G.a0, G.a1));
+  $('gFill').setAttribute('d', arcPath(G.r, G.a0, G.a1));
+  const step = gaugeMax > 400 ? 100 : 50;
+  let h = '';
+  for (let v = 0; v <= gaugeMax; v += step) {
+    const d = valToDeg(v), [x0, y0] = polar(128, d), [x1, y1] = polar(136, d), [tx, ty] = polar(112, d);
+    h += `<line class="g-tick" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`;
+    h += `<text class="g-ticklabel" x="${tx.toFixed(1)}" y="${(ty + 4).toFixed(1)}" text-anchor="middle">${v}</text>`;
+  }
+  $('gTicks').innerHTML = h;
+}
+function paintGauge(v) {
+  // the gap is longer than the path, so the dash pattern never repeats at the far end
+  $('gFill').setAttribute('stroke-dasharray', (clamp(v / gaugeMax, 0, 1) * 100).toFixed(2) + ' 200');
+  const [x, y] = polar(G.r, valToDeg(v));
+  $('gDot').setAttribute('cx', x.toFixed(1)); $('gDot').setAttribute('cy', y.toFixed(1));
+}
+function currentTarget() {
+  if (ses && ses.kind === 'ramp') return ses.state === 'done' ? null : ses.ladder[Math.min(ses.level, ses.ladder.length - 1)];
+  if (!ses && S.mode === 'ramp') return ladder()[0];
+  return null;
+}
+function renderZone() {
+  const t = currentTarget(), tol = ses ? ses.tol : S.tolPct / 100;
+  const z = $('gZone'), m = $('gTarget');
+  if (!t) { show(z, false); show(m, false); return; }
+  const d0 = valToDeg(t.target * (1 - tol)), d1 = valToDeg(t.target * (1 + tol));
+  z.setAttribute('d', arcPath(168, d0, Math.max(d1, d0 + 0.5)));
+  const dm = valToDeg(t.target), [x0, y0] = polar(160, dm), [x1, y1] = polar(177, dm);
+  m.setAttribute('x1', x0.toFixed(1)); m.setAttribute('y1', y0.toFixed(1)); m.setAttribute('x2', x1.toFixed(1)); m.setAttribute('y2', y1.toFixed(1));
+  show(z, true); show(m, true);
+}
+function renderSign(animate) {
+  const t = currentTarget(), el = $('sign');
+  show(el, !!t);
+  if (!t) return;
+  setText($('signNum'), String(t.target));
+  if (animate) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+}
+
+/* ---------- text + status ---------- */
+function setStatus(tone, icon, text) {
+  const el = $('status');
+  if (el.dataset.tone !== tone) el.dataset.tone = tone;
+  if (el.dataset.icon !== icon) { el.dataset.icon = icon; $('statusIcon').innerHTML = ICONS[icon]; }
+  setText($('statusText'), text);
+  const g = $('gauge'), gt = tone === 'good' || tone === 'over' ? tone : 'pace';
+  if (g.dataset.tone !== gt) g.dataset.tone = gt;
+}
+function zoneTone(v, target, tol, prev) {
+  const lo = target * (1 - tol), hi = target * (1 + tol), h = target * 0.015;   // a little stickiness stops flicker
+  if (prev === 'good') return v < lo - h ? 'under' : v > hi + h ? 'over' : 'good';
+  return v < lo ? 'under' : v > hi ? 'over' : 'good';
+}
+function renderStatus(nowS) {
+  const s = ses;
+  if (!s) { setStatus('idle', 'dot', 'Ready'); return; }
+  if (s.state === 'waiting') { setStatus('listen', 'mic', s.micLive ? 'Listening…' : 'Starting mic…'); return; }
+  if (s.state === 'done') {
+    if (s.kind === 'ramp' && s.topHeld) setStatus('good', 'flag', 'Kept up to ' + (s.topHeld.pct === 0 ? 'your starting pace' : fmtPct(s.topHeld.pct)));
+    else setStatus('idle', 'flag', s.kind === 'ramp' ? 'Session complete' : bandLabel(s.avg) + ' on average');
+    return;
+  }
+  const silent = nowS - lastWordTime(s) > 2.5;
+  if (s.kind === 'ramp') {
+    const t = s.ladder[s.level];
+    s.tone = zoneTone(s.smooth, t.target, s.tol, s.tone);
+    if (s.tone === 'good') setStatus('good', 'check', 'On pace');
+    else if (s.tone === 'over') setStatus('over', 'down', 'Ease off');
+    else setStatus('under', 'up', silent ? 'Keep talking' : 'Speed up');
+  } else if (silent) setStatus('idle', 'dot', 'Paused');
+  else setStatus('pace', 'dot', bandLabel(s.smooth));
+}
+function renderInfo(nowS) {
+  const s = ses;
+  let title, sub, prog = null;
+  if (!s) {
+    if (note) { title = note.title; sub = note.sub; }
+    else if (S.mode === 'free') { title = 'Free talk'; sub = 'Press Start and just talk. The gauge follows your pace.'; }
+    else { const L = ladder(); title = 'Ramp up'; sub = `${L.length} levels · ${fmtDur(S.intervalSec)} each · ${L[0].target} → ${L[L.length - 1].target} wpm`; }
+  } else if (s.state === 'waiting') {
+    title = s.kind === 'measure' ? 'Measuring your pace' : s.micLive ? 'Listening…' : 'Starting the microphone…';
+    sub = s.micLive ? 'Start talking. The clock starts with your first word.' : 'If your browser asks, allow the microphone.';
+  } else if (s.state === 'running') {
+    const tRel = Math.max(0, nowS - s.t0);
+    if (s.kind === 'ramp') {
+      const n = s.ladder.length, l = s.ladder[s.level], inLevel = tRel - s.level * s.interval;
+      title = `Level ${s.level + 1} of ${n} · ${fmtPct(l.pct)}`;
+      sub = (s.level === n - 1 ? 'Finishing in ' : 'Next level in ') + fmtTime(Math.ceil(s.interval - inLevel));
+      prog = inLevel / s.interval;
+    } else if (s.kind === 'measure') {
+      title = 'Measuring your pace'; sub = 'Keep talking the way you normally do · ' + fmtTime(Math.ceil(MEASURE_S - tRel)) + ' left';
+      prog = tRel / MEASURE_S;
+    } else { title = fmtTime(tRel); sub = s.words.length + ' words so far'; }
+  } else if (s.kind === 'ramp') {
+    title = s.reason === 'complete' ? 'Ramp complete' : 'Stopped early';
+    sub = s.judged ? `On pace for ${s.hits} of ${s.judged} level${s.judged === 1 ? '' : 's'}` + (s.topHeld ? ` · kept up through ${s.topHeld.target} wpm` : '') : 'No full levels yet. Give it another go.';
+  } else { title = 'Session complete'; sub = `${fmtTime(s.dur)} · ${s.words.length} words · peak ${s.peak} wpm`; }
+  setText($('infoTitle'), title); setText($('infoSub'), sub);
+  show($('bar'), prog !== null);
+  if (prog !== null) $('barFill').style.width = (clamp(prog, 0, 1) * 100).toFixed(1) + '%';
+}
+function renderKpis(nowS) {
+  const s = ses;
+  let avg = '–', peak = '–', words = '0', time = '0:00';
+  if (s && s.state === 'done') { avg = String(s.avg); peak = String(s.peak); words = String(s.words.length); time = fmtTime(s.dur); }
+  else if (s && s.t0 !== null) {
+    const el = Math.max(lastWordTime(s), nowS - GRACE_S) - s.t0;
+    if (el >= 3) avg = String(Math.round(s.words.length / el * 60));
+    if (s.peak > 0) peak = String(Math.round(s.peak));
+    words = String(s.words.length); time = fmtTime(nowS - s.t0);
+  }
+  setText($('kAvg'), avg); setText($('kPeak'), peak); setText($('kWords'), words); setText($('kTime'), time);
+}
+
+const VERDICT_TEXT = { good: 'on pace', under: 'under', over: 'over' };
+const VERDICT_ICON = { good: 'check', under: 'down', over: 'up' };
+let lastTableHtml = '';
+function renderTable(nowS) {
+  const kind = ses ? ses.kind : S.mode, isRamp = kind === 'ramp';
+  const segs = currentSegs(nowS), tol = ses ? ses.tol : S.tolPct / 100;
+  setText($('breakTitle'), isRamp ? 'Your levels' : 'This session');
+  setText($('breakNote'), isRamp ? 'on pace = within ' + Math.round(tol * 100) + '% of target' : segs.length ? 'pace in 20-second blocks' : '');
+  let h;
+  if (!segs.length) {
+    h = '<ul class="guide"><li><span>Under 110</span><span>Slow, deliberate</span></li><li><span>110 – 140</span><span>Measured, like a careful presentation</span></li>' +
+        '<li><span>140 – 170</span><span>Conversational</span></li><li><span>170 – 200</span><span>Brisk</span></li><li><span>200 +</span><span>Fast</span></li></ul>' +
+        '<p class="guide-note">A rough guide to words per minute in English. Most everyday conversation sits around 150.</p>';
+  } else {
+    h = '<table class="ladder"><thead><tr><th>' + (isRamp ? 'Level' : 'Time') + '</th>' + (isRamp ? '<th class="num">Target</th>' : '') + '<th class="num">You</th></tr></thead><tbody>';
+    for (const g of segs) {
+      const live = g.state === 'live', v = g.state === 'live' ? null : verdict(g, tol);
+      h += `<tr class="${g.state}"${live ? ' aria-current="true"' : ''}>`;
+      if (isRamp) {
+        h += `<td><span class="main">Level ${g.i + 1}</span><span class="sub">${fmtPct(g.pct)}</span></td>`;
+        h += `<td class="num"><span class="main">${g.target}</span><span class="sub">${bandLabel(g.target).toLowerCase()}</span></td>`;
+      } else {
+        h += `<td><span class="main">${fmtTime(g.start)} – ${fmtTime(g.start + g.len)}</span></td>`;
+      }
+      let sub = '';
+      if (live) sub = 'so far';
+      else if (v) sub = `<span class="verdict v-${v.kind}">${ICONS[VERDICT_ICON[v.kind]]}${v.kind === 'good' ? 'on pace' : Math.abs(Math.round(v.diff * 100)) + '% ' + VERDICT_TEXT[v.kind]}</span>`;
+      else if (g.wpm !== null && !isRamp) sub = bandLabel(g.wpm).toLowerCase();
+      h += `<td class="num"><span class="main">${g.wpm === null ? '–' : g.wpm}</span><span class="sub">${sub || '&nbsp;'}</span></td></tr>`;
+    }
+    h += '</tbody></table>';
+  }
+  if (h === lastTableHtml) return;
+  lastTableHtml = h;
+  const wrap = $('tableWrap'), stick = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 24;
+  wrap.innerHTML = h;
+  if (!isRamp && isActive() && stick) wrap.scrollTop = wrap.scrollHeight;
+}
+
+let lastHeroAt = 0;
+function renderLive(nowS) {
+  const s = ses, now = performance.now();
+  if (now - lastHeroAt >= 240) { lastHeroAt = now; setText($('hero'), String(Math.round(s.smooth))); }
+  renderStatus(nowS); renderInfo(nowS); renderKpis(nowS); renderTable(nowS);
+}
+
+function renderButtons() {
+  const s = ses, btn = $('startBtn'), active = isActive();
+  btn.dataset.running = String(active);
+  setText(btn, active ? (s.kind === 'measure' ? 'Cancel' : 'Stop') : s ? 'Start again' : S.mode === 'ramp' ? 'Start ramp' : 'Start');
+  const done = !!s && s.state === 'done';
+  show($('doneActions'), done);
+  show($('useBaseBtn'), done && s.kind === 'free');
+  if (done && s.kind === 'free') setText($('useBaseBtn'), 'Use ' + clamp(s.avg, 60, 300) + ' wpm as my ramp starting pace');
+  setText($('copyBtn'), 'Copy results');
+  for (const t of [$('tabFree'), $('tabRamp')]) { t.disabled = active; t.setAttribute('aria-selected', String(t.dataset.mode === S.mode)); }
+  $('rampFields').disabled = active;
+  $('lang').disabled = active; $('tol').disabled = active;
+}
+
+/* ---------- ramp settings ---------- */
+function buildChips(host, presets, unit, key, otherId, otherLabel) {
+  host.innerHTML = '';
+  for (const p of presets) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.dataset.val = String(p);
+    b.textContent = unit === '%' ? p + '%' : fmtDur(p);
+    b.addEventListener('click', () => { S[key] = p; settingsChanged(); });
+    host.appendChild(b);
+  }
+  const wrap = document.createElement('label'); wrap.className = 'chip-other';
+  const input = document.createElement('input');
+  input.type = 'number'; input.id = otherId; input.inputMode = 'decimal'; input.placeholder = 'other'; input.setAttribute('aria-label', otherLabel);
+  input.addEventListener('change', () => { const v = parseFloat(input.value); if (Number.isFinite(v) && v > 0) { S[key] = v; settingsChanged(); } else renderSettings(); });
+  wrap.append(input, document.createTextNode(unit === '%' ? '%' : 'sec'));
+  host.appendChild(wrap);
+}
+function renderChips(host, presets, value, otherId) {
+  const isPreset = presets.includes(value);
+  for (const b of host.querySelectorAll('.chip')) b.setAttribute('aria-pressed', String(+b.dataset.val === value));
+  const input = $(otherId);
+  input.classList.toggle('on', !isPreset);
+  if (document.activeElement !== input) input.value = isPreset ? '' : String(value);
+}
+function renderSettings() {
+  show($('rampCard'), S.mode === 'ramp');
+  if (document.activeElement !== $('baseline')) $('baseline').value = String(S.baseline);
+  if (document.activeElement !== $('levels')) $('levels').value = String(S.levels);
+  renderChips($('stepChips'), STEP_PRESETS, S.stepPct, 'stepOther');
+  renderChips($('intChips'), INTERVAL_PRESETS, S.intervalSec, 'intOther');
+  $('customOn').checked = S.customOn;
+  if (document.activeElement !== $('custom')) $('custom').value = S.custom;
+  const usingCustom = S.customOn && parseCustom(S.custom).length > 0;
+  for (const el of [...$('stepChips').querySelectorAll('button, input'), $('levels'), $('levelsDown'), $('levelsUp')]) el.disabled = usingCustom;
+  if (S.customOn) $('adv').open = true;
+  const L = ladder(), top = L.reduce((a, b) => (b.target > a.target ? b : a), L[0]);
+  setText($('rampTotal'), fmtTime(L.length * S.intervalSec) + ' total');
+  const p = $('rampSummary'); p.textContent = '';
+  p.append('Tops out at ');
+  const strong = document.createElement('strong'); strong.textContent = top.target + ' wpm'; p.append(strong);
+  p.append(top.pct > 0 ? ` — that's ${+top.pct.toFixed(1)}% faster than your ${S.baseline} wpm starting pace.` : '.');
+  $('lang').value = S.lang; $('tol').value = String(S.tolPct); $('sound').checked = S.sound;
+}
+function settingsChanged() {
+  sanitize(S); saveSettings();
+  if (ses && ses.state === 'done') ses = null;
+  note = null;
+  renderAll();
+}
+
+/* ---------- chart ---------- */
+let CH = null, hoverT = null;
+function drawChart() {
+  const host = $('chart'), svg = host.querySelector('svg');
+  const W = Math.max(260, host.clientWidth || 600), H = host.clientHeight || 230;
+  const m = { l: 36, r: 12, t: 20, b: 24 };
+  const s = ses, kind = s ? s.kind : S.mode;
+  const lad = kind === 'ramp' ? (s ? s.ladder : ladder()) : null;
+  const interval = s ? s.interval : S.intervalSec, tol = s ? s.tol : S.tolPct / 100;
+  const pts = s ? s.samples : [];
+  const lastT = pts.length ? pts[pts.length - 1].t : 0;
+  const tMax = lad ? lad.length * interval : kind === 'measure' ? MEASURE_S : Math.max(60, Math.ceil((lastT + 3) / 30) * 30);
+  let top = 240;
+  if (lad) for (const l of lad) top = Math.max(top, l.target * (1 + tol) * 1.06);
+  if (s) top = Math.max(top, s.peakAll * 1.06);
+  const yStep = top > 420 ? 100 : 50, yMax = Math.ceil(top / yStep) * yStep;
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const X = t => m.l + pw * clamp(t / tMax, 0, 1), Y = v => m.t + ph * (1 - clamp(v / yMax, 0, 1));
+  const f = n => n.toFixed(1);
+  let h = '';
+
+  for (let v = 0; v <= yMax; v += yStep) {
+    h += `<line class="${v === 0 ? 'c-axis' : 'c-grid'}" x1="${m.l}" x2="${W - m.r}" y1="${f(Y(v))}" y2="${f(Y(v))}"/>`;
+    h += `<text class="c-label" x="${m.l - 8}" y="${f(Y(v) + 4)}" text-anchor="end">${v}</text>`;
+  }
+  const xStep = lad && lad.length <= 10 ? interval : [5, 10, 15, 20, 30, 60, 120, 300, 600, 900, 1800].find(st => tMax / st <= 8) || 3600;
+  const every = (tMax / xStep) * 44 > pw ? 2 : 1;
+  for (let t = 0, i = 0; t <= tMax + 1e-6; t += xStep, i++) {
+    if (i % every) continue;
+    h += `<text class="c-label" x="${f(X(t))}" y="${H - 6}" text-anchor="${t === 0 ? 'start' : t >= tMax - 1e-6 ? 'end' : 'middle'}">${fmtTime(t)}</text>`;
+  }
+  if (lad) lad.forEach((l, i) => {
+    const x0 = X(i * interval) + 1, x1 = X((i + 1) * interval) - 1, yT = Y(l.target * (1 + tol)), yB = Y(l.target * (1 - tol));
+    h += `<rect class="c-zone" x="${f(x0)}" y="${f(yT)}" width="${f(Math.max(0, x1 - x0))}" height="${f(yB - yT)}" rx="3"/>`;
+    h += `<line class="c-zone-line" x1="${f(x0)}" x2="${f(x1)}" y1="${f(Y(l.target))}" y2="${f(Y(l.target))}"/>`;
+    if (x1 - x0 >= 40) h += `<text class="c-label" x="${f((x0 + x1) / 2)}" y="${f(Math.max(11, yT - 5))}" text-anchor="middle">${l.target}</text>`;
+  });
+  if (pts.length > 1) {
+    let d = '';
+    pts.forEach((p, i) => { d += (i ? 'L' : 'M') + f(X(p.t)) + ' ' + f(Y(p.v)); });
+    h += `<path class="c-area" d="${d}L${f(X(lastT))} ${f(Y(0))}L${f(X(pts[0].t))} ${f(Y(0))}Z"/><path class="c-line" d="${d}"/>`;
+    const lp = pts[pts.length - 1];
+    h += `<circle class="c-dot" cx="${f(X(lp.t))}" cy="${f(Y(lp.v))}" r="4.5"/>`;
+  }
+  h += `<line id="cCross" class="c-cross" y1="${m.t}" y2="${H - m.b}" hidden/><circle id="cHover" class="c-dot" r="5" hidden/>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = h;
+  CH = { W, m, tMax, X, Y, lad, interval, pts };
+  show($('chartEmpty'), !lad && pts.length < 2);
+  show($('legend'), !!lad);
+  applyHover();
+}
+function applyHover() {
+  const c = CH, tip = $('tip'), cross = $('cCross'), dot = $('cHover');
+  if (!c || !cross) return;
+  let p = null, t = hoverT;
+  if (t !== null && c.pts.length) {
+    const first = c.pts[0].t, last = c.pts[c.pts.length - 1].t;
+    if (t >= first - 1 && t <= last + 1) {
+      let i = Math.min(c.pts.length - 1, Math.max(0, Math.round((t - first) / 0.5)));
+      while (i > 0 && c.pts[i].t > t) i--;
+      if (i < c.pts.length - 1 && Math.abs(c.pts[i + 1].t - t) < Math.abs(c.pts[i].t - t)) i++;
+      p = c.pts[i]; t = p.t;
+    }
+  }
+  const lvl = t !== null && c.lad ? c.lad[Math.min(c.lad.length - 1, Math.floor(clamp(t, 0, c.tMax - 1e-6) / c.interval))] : null;
+  if (t === null || (!p && !lvl)) { show(tip, false); show(cross, false); show(dot, false); return; }
+  const x = c.X(t);
+  cross.setAttribute('x1', x.toFixed(1)); cross.setAttribute('x2', x.toFixed(1)); show(cross, true);
+  show(dot, !!p);
+  if (p) { dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', c.Y(p.v).toFixed(1)); }
+  setText($('tipV'), p ? p.v + ' wpm' : 'Target ' + lvl.target + ' wpm');
+  setText($('tipT'), p ? 'at ' + fmtTime(t) : 'Level ' + (lvl.i + 1) + ' · ' + fmtPct(lvl.pct));
+  setText($('tipG'), p && lvl ? 'target ' + lvl.target + ' wpm (' + fmtPct(lvl.pct) + ')' : '');
+  show($('tipG'), !!(p && lvl));
+  show(tip, true);
+  const tw = tip.offsetWidth, left = x + 12 + tw > c.W ? x - 12 - tw : x + 12;
+  tip.style.left = Math.max(0, left).toFixed(0) + 'px';
+}
+function chartTimeAt(clientX) {
+  const c = CH, r = $('chart').getBoundingClientRect();
+  return clamp((clientX - r.left - c.m.l) / (c.W - c.m.l - c.m.r), 0, 1) * c.tMax;
+}
+
+/* ---------- history ---------- */
+let histAll = false;
+function pushHistory(s) {
+  const list = load(LS_HISTORY, []);
+  list.unshift({
+    ts: s.startedAt, kind: s.kind, dur: Math.round(s.dur), words: s.words.length, avg: s.avg, peak: s.peak,
+    baseline: s.baseline, interval: s.interval, hits: s.hits ?? null, judged: s.judged ?? null,
+    top: s.topHeld ? { pct: s.topHeld.pct, target: s.topHeld.target } : null,
+    levels: s.kind === 'ramp' ? s.finalSegs.map(g => ({ pct: g.pct, target: g.target, wpm: g.wpm })) : null,
+  });
+  save(LS_HISTORY, list.slice(0, 100));
+}
+function renderHistory() {
+  const list = load(LS_HISTORY, []), ul = $('hist');
+  ul.textContent = '';
+  show($('histClear'), list.length > 0);
+  show($('histMore'), list.length > 6);
+  setText($('histMore'), histAll ? 'Show fewer' : 'Show all ' + list.length);
+  if (!list.length) {
+    const li = document.createElement('li'); li.className = 'hist-empty'; li.textContent = 'Your finished sessions will be listed here, so you can see your pace change over time.';
+    ul.appendChild(li); return;
+  }
+  for (const e of (histAll ? list : list.slice(0, 6))) {
+    const li = document.createElement('li'), main = document.createElement('div'), title = document.createElement('div'), sub = document.createElement('div'), avg = document.createElement('div'), small = document.createElement('small');
+    main.className = 'h-main'; title.className = 'h-title'; sub.className = 'h-sub'; avg.className = 'h-avg';
+    const when = new Date(e.ts).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    title.textContent = (e.kind === 'ramp' ? 'Ramp up' : 'Free talk') + ' · ' + when;
+    if (e.kind === 'ramp') {
+      const lv = e.levels || [], last = lv[lv.length - 1];
+      sub.textContent = `${e.baseline} → ${last ? last.target : '?'} wpm, ${fmtDur(e.interval)} per level · on pace ${e.hits ?? 0} of ${e.judged ?? lv.length}` + (e.top ? ` · kept up through ${e.top.target} wpm` : '');
+    } else sub.textContent = `${fmtTime(e.dur)} · ${e.words} words · peak ${e.peak} wpm`;
+    avg.textContent = String(e.avg); small.textContent = 'avg wpm'; avg.appendChild(small);
+    main.append(title, sub); li.append(main, avg); ul.appendChild(li);
+  }
+}
+function resultsText(s) {
+  const when = new Date(s.startedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  const lines = ['Speech Pace · ' + (s.kind === 'ramp' ? 'Ramp up' : 'Free talk') + ' · ' + when];
+  if (s.kind === 'ramp') {
+    lines.push(`Starting pace ${s.baseline} wpm · new level every ${fmtDur(s.interval)} · on pace = within ${Math.round(s.tol * 100)}%`);
+    for (const g of s.finalSegs) {
+      const v = verdict(g, s.tol);
+      lines.push(`Level ${g.i + 1} (${fmtPct(g.pct)}): target ${g.target} → ` + (g.wpm === null ? 'not reached' : g.wpm + ' wpm, ' + (v.kind === 'good' ? 'on pace' : Math.abs(Math.round(v.diff * 100)) + '% ' + VERDICT_TEXT[v.kind])));
+    }
+  } else for (const g of s.finalSegs) lines.push(`${fmtTime(g.start)}–${fmtTime(g.start + g.len)}: ${g.wpm} wpm`);
+  lines.push(`Average ${s.avg} wpm · peak ${s.peak} wpm · ${s.words.length} words in ${fmtTime(s.dur)}`);
+  return lines.join('\n');
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+/* ---------- banner + render all ---------- */
+function showBanner(text) { const b = $('banner'); b.textContent = text; show(b, true); }
+function hideBanner() { show($('banner'), false); }
+function renderAll() {
+  const nowS = performance.now() / 1000 - LATENCY_S;
+  renderSettings(); renderButtons(); drawGaugeStatic(); renderZone(); renderSign(false);
+  renderInfo(nowS); renderStatus(nowS); renderKpis(nowS); renderTable(nowS); drawChart(); renderHistory();
+  if (!ses) { paintGauge(0); setText($('hero'), '0'); }
+  setText($('heroUnit'), ses && ses.state === 'done' ? 'average wpm' : 'words per minute');
+}
+
+/* ---------- wiring ---------- */
+for (const [code, name] of LANGS) { const o = document.createElement('option'); o.value = code; o.textContent = name; $('lang').appendChild(o); }
+buildChips($('stepChips'), STEP_PRESETS, '%', 'stepPct', 'stepOther', 'Other percent');
+buildChips($('intChips'), INTERVAL_PRESETS, 's', 'intervalSec', 'intOther', 'Other number of seconds');
+
+for (const tab of [$('tabFree'), $('tabRamp')]) tab.addEventListener('click', () => {
+  if (isActive() || S.mode === tab.dataset.mode && !ses) return;
+  S.mode = tab.dataset.mode; ses = null; note = null; hoverT = null;
+  setText($('heard'), ''); hideBanner(); saveSettings(); renderAll();
+});
+$('startBtn').addEventListener('click', () => {
+  if (!isActive()) { start(S.mode); return; }
+  if (ses.kind === 'measure' || ses.state === 'waiting') cancel(); else finish('stopped');
+});
+$('measureBtn').addEventListener('click', () => start('measure'));
+$('baseDown').addEventListener('click', () => { S.baseline -= 5; settingsChanged(); });
+$('baseUp').addEventListener('click', () => { S.baseline += 5; settingsChanged(); });
+$('baseline').addEventListener('change', e => { S.baseline = +e.target.value; settingsChanged(); });
+$('levelsDown').addEventListener('click', () => { S.levels -= 1; settingsChanged(); });
+$('levelsUp').addEventListener('click', () => { S.levels += 1; settingsChanged(); });
+$('levels').addEventListener('change', e => { S.levels = +e.target.value; settingsChanged(); });
+$('customOn').addEventListener('change', e => { S.customOn = e.target.checked; settingsChanged(); });
+$('custom').addEventListener('input', e => { S.custom = e.target.value; settingsChanged(); });
+$('lang').addEventListener('change', e => { S.lang = e.target.value; saveSettings(); });
+$('tol').addEventListener('change', e => { S.tolPct = +e.target.value; settingsChanged(); });
+$('sound').addEventListener('change', e => { S.sound = e.target.checked; saveSettings(); if (S.sound) { primeAudio(); cue.level(); } });
+$('copyBtn').addEventListener('click', async () => {
+  if (!ses || ses.state !== 'done') return;
+  setText($('copyBtn'), (await copyText(resultsText(ses))) ? 'Copied' : "Couldn't copy");
+});
+$('useBaseBtn').addEventListener('click', () => {
+  if (!ses || ses.state !== 'done') return;
+  S.baseline = clamp(ses.avg, 60, 300); S.mode = 'ramp'; ses = null;
+  note = { title: 'Starting pace set to ' + S.baseline + ' wpm', sub: "Your ramp is updated. Press Start when you're ready." };
+  sanitize(S); saveSettings(); renderAll();
+});
+$('histMore').addEventListener('click', () => { histAll = !histAll; renderHistory(); });
+let clearArmed = 0;   // clearing takes two clicks; the first arms the button for a few seconds
+$('histClear').addEventListener('click', () => {
+  if (!clearArmed) {
+    setText($('histClear'), 'Click again to clear all');
+    clearArmed = setTimeout(() => { clearArmed = 0; setText($('histClear'), 'Clear'); }, 4000);
+    return;
+  }
+  clearTimeout(clearArmed); clearArmed = 0; setText($('histClear'), 'Clear');
+  save(LS_HISTORY, []); renderHistory();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest && e.target.closest('input, select, textarea, button, summary, a, [tabindex]')) return;
+  e.preventDefault(); $('startBtn').click();
+});
+document.addEventListener('click', e => { const p = $('prefs'); if (p.open && !p.contains(e.target)) p.open = false; });
+
+const chartEl = $('chart');
+chartEl.addEventListener('pointermove', e => { if (CH) { hoverT = chartTimeAt(e.clientX); applyHover(); } });
+chartEl.addEventListener('pointerleave', () => { hoverT = null; applyHover(); });
+chartEl.addEventListener('focus', () => { if (CH && hoverT === null) { hoverT = CH.pts.length ? CH.pts[CH.pts.length - 1].t : 0; applyHover(); } });
+chartEl.addEventListener('blur', () => { hoverT = null; applyHover(); });
+chartEl.addEventListener('keydown', e => {
+  if (!CH || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Escape')) return;
+  e.preventDefault();
+  if (e.key === 'Escape') hoverT = null;
+  else { const stepT = CH.pts.length ? 0.5 * (e.shiftKey ? 10 : 2) : CH.interval; hoverT = clamp((hoverT ?? 0) + (e.key === 'ArrowRight' ? stepT : -stepT), 0, CH.tMax); }
+  applyHover();
+});
+if ('ResizeObserver' in window) new ResizeObserver(() => drawChart()).observe(chartEl);
+
+if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) showBanner(ERRORS.unsupported);
+renderAll();
+})();
+</script>
+</body>
+</html>
